@@ -1,8 +1,6 @@
 import telebot
 from loguru import logger
-import os
-import requests
-from collections import Counter
+
 class Bot:
 
     def __init__(self, token):
@@ -36,10 +34,8 @@ class Bot:
         self.send_text(f'Your original message: {message.text}')
 
 if __name__ == '__main__':
-    # TODO - in the 'polyBot' dir, create a file called .telegramToken and store your bot token there.
-    #  ADD THE .telegramToken FILE TO .gitignore, NEVER COMMIT IT!!!
     with open('.telegramToken') as f:
-        _token = f.read()
+        _token = f.read().strip()
 
     my_bot = Bot(_token)
     my_bot.start()
