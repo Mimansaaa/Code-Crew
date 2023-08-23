@@ -1,11 +1,8 @@
 import telebot
 from loguru import logger
 import os
-import requests
-from collections import Counter
 import openai
-import ffmpeg
-import shutil
+from google.cloud import speech
 
 class Bot:
     def __init__(self, token):
@@ -96,7 +93,49 @@ class Bot:
         """Bot Main message handler"""
         logger.info(f"Incoming message: {message}")
         self.send_text(f"Your original message: {message.text}")
+    # ... (same as your existing Bot class)
 
+    def handle_voice_message(self, message):
+        file_id = message.voice.file_id
+        file_info = self.bot.get_file(file_id)
+        file_path = file_info.file_path
+        voice_data = self.bot.download_file(file_path)
+
+        # Save the voice message as an audio file
+        audio_path = "voice_messages/"
+        if not os.path.exists(audio_path):
+            os.makedirs(audio_path)
+        audio_file_path = os.path.join(audio_path, f"{file_id}.ogg")
+        with open(audio_file_path, "wb") as audio_file:
+            audio_file.write(voice_data)
+
+        # Convert voice message to text using Google Speech-to-Text
+        converted_text = self.convert_voice_to_text(audio_file_path)
+
+        # Call ChatGPT to generate a response
+        response = self.search_gpt(converted_text)
+
+        # Send the response back to the user
+        self.send_text_with_quote(response, message_id=message.message_id)
+
+    def convert_voice_to_text(self, audio_file_path):
+        client = speech.SpeechClient()
+
+        with open(audio_file_path, "rb") as audio_file:
+            content = audio_file.read()
+
+        audio = speech.RecognitionAudio(content=content)
+        config = speech.RecognitionConfig(
+            encoding=speech.RecognitionConfig.AudioEncoding.OGG_OPUS,
+            sample_rate_hertz=16000,
+            language_code="en-US",
+        )
+
+        response = client.recognize(config=config, audio=audio)
+
+        if response.results:
+            return response.results[0].alternatives[0].transcript
+        return ""
 
 class QuoteBot(Bot):
     def handle_message(self, message):
@@ -104,6 +143,7 @@ class QuoteBot(Bot):
 
         if message.text != "Please don't quote me":
             self.send_text_with_quote(message.text, message_id=message.message_id)
+
 
 
 class EducationBot(Bot):
@@ -122,16 +162,22 @@ class EducationBot(Bot):
 
         return response
 
+
 if __name__ == "__main__":
-    _token = ".telegramToken"
-
-    openai.api_key = ".gpt3ApiKey"
-
+    _token = "6333049326:AAGZH5kjbQwKMSWWNldjkspmE18Eg6s8tTw"
+    openai.api_key = "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"
     my_bot = EducationBot(_token)
+
+    # Add a handler for voice messages
+    @my_bot.bot.message_handler(content_types=['voice'])
+    def handle_voice_message(message):
+        my_bot.handle_voice_message(message)
+
 
     @my_bot.bot.message_handler(commands=["start"])
     def handle_start(message):
-        my_bot.send_text("Welcome to the AlexAI Bot. Click on /help to get started.")
+        my_bot.send_text("Welcome to the SynthiaAI Bot. Click on /help to get started.")
+
 
     @my_bot.bot.message_handler(commands=["help"])
     def handle_help(message):
