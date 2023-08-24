@@ -1,8 +1,8 @@
 import telebot
 from loguru import logger
+from google.cloud import speech
 import os
 import openai
-from google.cloud import speech
 
 class Bot:
     def __init__(self, token):
@@ -34,53 +34,6 @@ class Bot:
             self.current_msg.chat.id, text, reply_to_message_id=message_id
         )
 
-    def is_current_msg_photo(self):
-        return self.current_msg.content_type == "photo"
-
-    def is_current_msg_video(self):
-        return self.current_msg.content_type == "video"
-
-    def download_user_photo(self, quality=2):
-        """
-        Downloads the photos that sent to the Bot to `photos` directory (should be existed)
-        :param quality: integer representing the file quality. Allowed values are [0, 1, 2]
-        :return:
-        """
-        if not self.is_current_msg_photo():
-            raise RuntimeError(
-                f"Message content of type 'photo' expected, but got {self.current_msg.content_type}"
-            )
-
-        file_info = self.bot.get_file(self.current_msg.photo[quality].file_id)
-        data = self.bot.download_file(file_info.file_path)
-        folder_name = file_info.file_path.split("/")[0]
-
-        if not os.path.exists(folder_name):
-            os.makedirs(folder_name)
-
-        with open(file_info.file_path, "wb") as photo:
-            photo.write(data)
-
-        return file_info.file_path
-
-    def download_user_video(self, quality=2):
-        if not self.is_current_msg_video():
-            raise RuntimeError(
-                f"Message content of type 'video' expected, but got {self.current_msg.content_type}"
-            )
-
-        file_info = self.bot.get_file(self.current_msg.video.file_id)
-        data = self.bot.download_file(file_info.file_path)
-        folder_name = file_info.file_path.split("/")[0]
-
-        if not os.path.exists(folder_name):
-            os.makedirs(folder_name)
-
-        with open(file_info.file_path, "wb") as photo:
-            photo.write(data)
-
-        return file_info.file_path
-
     def send_image(self, image, caption, message_id):
         self.bot.send_photo(
             self.current_msg.chat.id,
@@ -93,58 +46,6 @@ class Bot:
         """Bot Main message handler"""
         logger.info(f"Incoming message: {message}")
         self.send_text(f"Your original message: {message.text}")
-    # ... (same as your existing Bot class)
-
-    def handle_voice_message(self, message):
-        file_id = message.voice.file_id
-        file_info = self.bot.get_file(file_id)
-        file_path = file_info.file_path
-        voice_data = self.bot.download_file(file_path)
-
-        # Save the voice message as an audio file
-        audio_path = "voice_messages/"
-        if not os.path.exists(audio_path):
-            os.makedirs(audio_path)
-        audio_file_path = os.path.join(audio_path, f"{file_id}.ogg")
-        with open(audio_file_path, "wb") as audio_file:
-            audio_file.write(voice_data)
-
-        # Convert voice message to text using Google Speech-to-Text
-        converted_text = self.convert_voice_to_text(audio_file_path)
-
-        # Call ChatGPT to generate a response
-        response = self.search_gpt(converted_text)
-
-        # Send the response back to the user
-        self.send_text_with_quote(response, message_id=message.message_id)
-
-    def convert_voice_to_text(self, audio_file_path):
-        client = speech.SpeechClient()
-
-        with open(audio_file_path, "rb") as audio_file:
-            content = audio_file.read()
-
-        audio = speech.RecognitionAudio(content=content)
-        config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.OGG_OPUS,
-            sample_rate_hertz=16000,
-            language_code="en-US",
-        )
-
-        response = client.recognize(config=config, audio=audio)
-
-        if response.results:
-            return response.results[0].alternatives[0].transcript
-        return ""
-
-class QuoteBot(Bot):
-    def handle_message(self, message):
-        logger.info(f"Incoming message: {message}")
-
-        if message.text != "Please don't quote me":
-            self.send_text_with_quote(message.text, message_id=message.message_id)
-
-
 
 class EducationBot(Bot):
     def search_gpt(self, query):
@@ -162,16 +63,43 @@ class EducationBot(Bot):
 
         return response
 
+    def handle_message(self, message):
+        logger.info(f"Incoming message: {message}")
+
+        if message.voice:  # Check if the message contains a voice note
+            voice_file_info = self.bot.get_file(message.voice.file_id)
+            voice_file = self.bot.download_file(voice_file_info.file_path)
+
+            with open("audio.mp3", "wb") as audio_file:
+                audio_file.write(voice_file)
+
+            transcription = self.transcribe_audio("audio.mp3")
+            if transcription:
+                self.send_text(transcription)
+            else:
+                self.send_text("Error: Unable to transcribe the audio.")
+
+        else:
+            response = self.search_gpt(message.text)
+            self.send_text_with_quote(response, message_id=message.message_id)
+
+    def transcribe_audio(self, audio_path):
+        with open(audio_path, 'rb') as f:
+            audio_data = f.read()
+
+        response = openai.Transcription.create(
+            audio=audio_data,
+            model="automatic"
+        )
+
+        transcription_text = response['text']
+        return transcription_text
+
 
 if __name__ == "__main__":
-    _token = "6333049326:AAGZH5kjbQwKMSWWNldjkspmE18Eg6s8tTw"
-    openai.api_key = "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"
+    _token = ""
+    openai.api_key = ""
     my_bot = EducationBot(_token)
-
-    # Add a handler for voice messages
-    @my_bot.bot.message_handler(content_types=['voice'])
-    def handle_voice_message(message):
-        my_bot.handle_voice_message(message)
 
 
     @my_bot.bot.message_handler(commands=["start"])
@@ -186,6 +114,8 @@ if __name__ == "__main__":
             "/start - Start the bot and get a welcome message\n"
             "/help - Get instructions on how to use the bot\n"
             "/chatgpt - Write a query to search on ChatGPT\n"
+            "/motivation - I'll keep motivating you time to time\n"
+            "/feedback - Give feedback\n"
         )
         my_bot.send_text(help_text)
 
@@ -201,3 +131,18 @@ if __name__ == "__main__":
 
 
     my_bot.start()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
