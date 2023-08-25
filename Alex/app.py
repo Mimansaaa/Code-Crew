@@ -5,7 +5,7 @@ import os
 import openai
 
 class Bot:
-    def __init__(self, token):
+    def _init_(self, token):
         self.bot = telebot.TeleBot(token, threaded=False)
         self.bot.set_update_listener(self._bot_internal_handler)
 
@@ -20,7 +20,7 @@ class Bot:
     def start(self):
         """Start polling msgs from users, this function never returns"""
         logger.info(
-            f"{self.__class__.__name__} is up and listening to new messages...."
+            f"{self._class.name_} is up and listening to new messages...."
         )
         logger.info(f"Telegram Bot information\n\n{self.bot.get_me()}")
 
@@ -66,37 +66,9 @@ class EducationBot(Bot):
     def handle_message(self, message):
         logger.info(f"Incoming message: {message}")
 
-        if message.voice:  # Check if the message contains a voice note
-            voice_file_info = self.bot.get_file(message.voice.file_id)
-            voice_file = self.bot.download_file(voice_file_info.file_path)
-
-            with open("audio.mp3", "wb") as audio_file:
-                audio_file.write(voice_file)
-
-            transcription = self.transcribe_audio("audio.mp3")
-            if transcription:
-                self.send_text(transcription)
-            else:
-                self.send_text("Error: Unable to transcribe the audio.")
-
-        else:
-            response = self.search_gpt(message.text)
-            self.send_text_with_quote(response, message_id=message.message_id)
-
-    def transcribe_audio(self, audio_path):
-        with open(audio_path, 'rb') as f:
-            audio_data = f.read()
-
-        response = openai.Transcription.create(
-            audio=audio_data,
-            model="automatic"
-        )
-
-        transcription_text = response['text']
-        return transcription_text
 
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     _token = ""
     openai.api_key = ""
     my_bot = EducationBot(_token)
@@ -113,17 +85,17 @@ if __name__ == "__main__":
             "How to use the bot:\n\n"
             "/start - Start the bot and get a welcome message\n"
             "/help - Get instructions on how to use the bot\n"
-            "/chatgpt - Write a query to search on ChatGPT\n"
+            "/search - Write a query to search on search\n"
             "/motivation - I'll keep motivating you time to time\n"
             "/feedback - Give feedback\n"
         )
         my_bot.send_text(help_text)
 
 
-    @my_bot.bot.message_handler(commands=["chatgpt"])
+    @my_bot.bot.message_handler(commands=["search"])
     def handle_chatgpt(message):
         # Extract the query by removing '/chatgpt' from the start of the message text
-        query = message.text.replace("/chatgpt", "").strip()
+        query = message.text.replace("/search", "").strip()
         # Call the gpt() function with the extracted query
         response = my_bot.search_gpt(query)
 
