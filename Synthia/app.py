@@ -1,11 +1,10 @@
+import sqlite3
 import telebot
 from loguru import logger
-import os
 import openai
-from google.cloud import speech
 
 class Bot:
-    def __init__(self, token):
+    def _init_(self, token):
         self.bot = telebot.TeleBot(token, threaded=False)
         self.bot.set_update_listener(self._bot_internal_handler)
 
@@ -20,7 +19,7 @@ class Bot:
     def start(self):
         """Start polling msgs from users, this function never returns"""
         logger.info(
-            f"{self.__class__.__name__} is up and listening to new messages...."
+            f"{self._class.name_} is up and listening to new messages...."
         )
         logger.info(f"Telegram Bot information\n\n{self.bot.get_me()}")
 
@@ -34,48 +33,6 @@ class Bot:
         """Bot Main message handler"""
         logger.info(f"Incoming message: {message}")
         self.send_text(f"Your original message: {message.text}")
-
-    def handle_voice_message(self, message):
-        file_id = message.voice.file_id
-        file_info = self.bot.get_file(file_id)
-        file_path = file_info.file_path
-        voice_data = self.bot.download_file(file_path)
-
-        # Save the voice message as an audio file
-        audio_path = "voice_messages/"
-        if not os.path.exists(audio_path):
-            os.makedirs(audio_path)
-        audio_file_path = os.path.join(audio_path, f"{file_id}.ogg")
-        with open(audio_file_path, "wb") as audio_file:
-            audio_file.write(voice_data)
-
-        # Convert voice message to text using Google Speech-to-Text
-        converted_text = self.convert_voice_to_text(audio_file_path)
-
-        # Call ChatGPT to generate a response
-        response = self.search_gpt(converted_text)
-
-        # Send the response back to the user
-        self.send_text_with_quote(response, message_id=message.message_id)
-
-    def convert_voice_to_text(self, audio_file_path):
-        client = speech.SpeechClient()
-
-        with open(audio_file_path, "rb") as audio_file:
-            content = audio_file.read()
-
-        audio = speech.RecognitionAudio(content=content)
-        config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.OGG_OPUS,
-            sample_rate_hertz=16000,
-            language_code="en-US",
-        )
-
-        response = client.recognize(config=config, audio=audio)
-
-        if response.results:
-            return response.results[0].alternatives[0].transcript
-        return ""
 
 class QuoteBot(Bot):
     def handle_message(self, message):
@@ -98,11 +55,55 @@ class SustainabilityBot(Bot):
 
         return response
 
+    def handle_message(self, message):
+        logger.info(f"Incoming message: {message}")
 
-if __name__ == "__main__":
-    _token = ""
-    openai.api_key = ""
+        if message.text.startswith('/feedback'):
+            self.send_feedback_button(message)
+
+    def send_feedback_button(self, message):
+        markup = telebot.types.InlineKeyboardMarkup()
+        button = telebot.types.InlineKeyboardButton(
+            text="Provide Feedback", callback_data="feedback"
+        )
+        markup.add(button)
+        self.bot.send_message(
+            message.chat.id,
+            "Thank you for using the bot! Please provide your feedback:",
+            reply_markup=markup,
+        )
+
+
+if __name__ == "_main_":
+    _token = "6333049326:AAGZH5kjbQwKMSWWNldjkspmE18Eg6s8tTw"
+    openai.api_key = "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"
     my_bot = SustainabilityBot(_token)
+
+    conn = sqlite3.connect('feedback.db')
+
+    conn = sqlite3.connect('feedback.db')
+    cursor = conn.cursor()
+
+
+    @my_bot.bot.callback_query_handler(func=lambda call: call.data == 'feedback')
+    def ask_for_feedback(call):
+        my_bot.bot.send_message(call.message.chat.id, "Please share your thoughts:")
+        my_bot.bot.register_next_step_handler_by_chat_id(call.message.chat.id, save_feedback)
+
+
+    def save_feedback(message):
+        user_id = message.from_user.id
+        feedback_text = message.text
+
+        try:
+            cursor.execute("INSERT INTO feedback (user_id, feedback_text) VALUES (?, ?)", (user_id, feedback_text))
+            conn.commit()
+
+            my_bot.bot.send_message(message.chat.id, "Thank you for your feedback!")
+
+        except sqlite3.Error as e:
+            my_bot.bot.send_message(message.chat.id,
+                                    "An error occurred while saving your feedback Please try again later.")
 
     # Add a handler for voice messages
     @my_bot.bot.message_handler(content_types=['voice'])
@@ -119,15 +120,17 @@ if __name__ == "__main__":
             "How to use the bot:\n\n"
             "/start - Start the bot and get a welcome message\n"
             "/help - Get instructions on how to use the bot\n"
-            "/chatgpt - Write a query to search on ChatGPT\n"
+            "/search - Write a query to search \n"
+            "/motivation - If you want me to motivate you to come and study here time to time...\n"
+            "/feedback - Feel free to give feedback\n"
         )
         my_bot.send_text(help_text)
 
 
-    @my_bot.bot.message_handler(commands=["chatgpt"])
+    @my_bot.bot.message_handler(commands=["search"])
     def handle_chatgpt(message):
         # Extract the query by removing '/chatgpt' from the start of the message text
-        query = message.text.replace("/chatgpt", "").strip()
+        query = message.text.replace("/search", "").strip()
         # Call the gpt() function with the extracted query
         response = my_bot.search_gpt(query)
 
@@ -135,3 +138,7 @@ if __name__ == "__main__":
 
 
     my_bot.start()
+    # Close the SQLite connection when the bot stops polling
+    cursor.close()
+    conn.close()
+
