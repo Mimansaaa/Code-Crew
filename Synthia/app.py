@@ -44,13 +44,6 @@ class Bot:
         logger.info(f"Incoming message: {message}")
         self.send_text(f"Your original message: {message.text}")
 
-
-class QuoteBot(Bot):
-    def handle_message(self, message):
-        logger.info(f"Incoming message: {message}")
-
-
-
 class SustainabilityBot(Bot):
     def __init__(self, token, openai_key):
         super().__init__(token)
@@ -89,9 +82,6 @@ class SustainabilityBot(Bot):
             reply_markup=markup,
         )
 
-    def send_text_with_quote(self, text, message_id=None):
-        self.send_text(text)
-
     def start_motivational_thread(self):
         self.motivational_thread = threading.Thread(target=self.send_motivational_message)
         self.motivational_thread.daemon = True  # Thread will exit when the main program exits
@@ -116,18 +106,30 @@ class SustainabilityBot(Bot):
             "Hello {name}, it's another day to contribute to a more sustainable future. Keep up the great work!",
             "Your dedication to sustainability is inspiring, {name}. Keep making eco-friendly choices with Synthia!",
             "Every small action counts, {name}. Your efforts are helping to create a greener planet with Synthia.",
-            "Your commitment to sustainability sets a positive example for others, {name}. Keep up the good work!",
-            "The Earth thanks you for your efforts, {name}. Continue making a positive impact with Synthia.",
-            "Your actions matter, {name}. Keep working towards a more sustainable world with Synthia's guidance.",
-            "The journey to a sustainable world starts with you, {name}. Keep making conscious choices with Synthia!",
             "Your dedication to sustainability is a step towards a brighter future, {name}. Keep up the great work!",
             "Sustainability is a path of progress, {name}. Keep moving forward with Synthia and making a difference.",
             "Thank you for being an eco-warrior, {name}. Your actions are making a positive change with Synthia.",
             "Every effort you make for sustainability is a step towards a better planet, {name}. Keep it up!",
-            "Your passion for sustainability shines through, {name}. Keep making the world a better place with Synthia.",
-            "By choosing sustainability, you're leaving a positive mark on the world, {name}. Keep up the good work!",
             "Your dedication to a sustainable lifestyle is truly commendable, {name}. Keep it up with Synthia!",
             "Sustainability is a journey, and you're on the right path, {name}. Keep making a difference with Synthia.",
+            "Embrace the game of sustainability with Synthia, where every action is a step towards a greener world."
+            "Let Synthia's gamification turn your choices into a winning strategy for our planet's future."
+            "Sustainability is our mission, and with Synthia, the journey becomes an exciting adventure."
+            "Synthia fuels your eco-passion by turning actions into challenges and rewards."
+            "Join the sustainability revolution with Synthia, where every player is a planet-saver."
+            "Synthia empowers you to be a changemaker through the game of sustainable choices."
+            "Experience the joy of positive change as Synthia's gamified path lights up your way."
+            "With Synthia, your sustainable actions become catalysts for global transformation."
+            "Let Synthia's gamified spirit infuse every action with purpose and impact."
+            "Elevate your impact with Synthia's sustainable gamification, where small steps make big waves."
+            "Choose Synthia to embark on an eco-adventure where the planet is the ultimate prize."
+            "Synthia's personalized roadmap paves the way for a planet-friendly lifestyle of purpose."
+            "Turn your environmental choices into a game of positive influence with Synthia."
+            "Synthia's strategy: gamify sustainability to make every action count towards a cleaner Earth."
+            "Synthia believes in your power to change the world, one gamified choice at a time."
+            "Level up your commitment to the environment with Synthia's engaging gamification."
+            "With Synthia's gamified approach, sustainability becomes a story of impact and inspiration."
+
         ]
         return random.choice(motivational_messages).format(name=self.user_details[chat_id]['name'])
 
@@ -155,10 +157,6 @@ class SustainabilityBot(Bot):
                 time.sleep(5)  # Sleep for 2 seconds to prevent high CPU usage
         except Exception as e:
             traceback.print_exc()  # Print the exception traceback
-
-    # def stop(self):
-    #     self.stop_motivational_thread()
-    #     super().stop()  # Call the parent stop method to stop the bot's polling
 
     def handle_voice_message(self, message):
         try:
@@ -328,13 +326,9 @@ if __name__ == "__main__":
         # Call the gpt() function with the extracted query
         response = my_bot.search_gpt(query)
 
-        my_bot.send_text_with_quote(response, message_id=message.message_id)
-
-
     @my_bot.bot.message_handler(content_types=['voice'])
     def handle_voice(message):
         my_bot.handle_voice_message(message)
-
 
     # Register the text message handler
     @my_bot.bot.message_handler(func=lambda message: True)
