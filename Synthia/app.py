@@ -1,12 +1,17 @@
-import telebot
 import random
 import schedule
 import threading
 import time
 import sqlite3
-import openai
 from loguru import logger
 import traceback
+import telebot
+import speech_recognition as sr
+from pydub import AudioSegment
+import openai
+from gtts import gTTS
+import tempfile
+import os
 
 
 class Bot:
@@ -21,7 +26,8 @@ class Bot:
         """Bot internal messages handler"""
         for message in messages:
             self.current_msg = message
-            self.handle_message(message)
+            if message.text:
+                self.handle_message(message)
 
     def start(self):
         logger.info(f"{self.__class__.__name__} is up and listening to new messages....")
@@ -44,10 +50,12 @@ class QuoteBot(Bot):
         logger.info(f"Incoming message: {message}")
 
 
+
 class SustainabilityBot(Bot):
     def __init__(self, token, openai_key):
         super().__init__(token)
         self.openai_key = openai_key
+        self.recognizer = sr.Recognizer()  # Initialize the speech recognition object
 
     def search_gpt(self, query):
         completion = openai.ChatCompletion.create(
@@ -105,36 +113,21 @@ class SustainabilityBot(Bot):
     def generate_motivational_message(self, chat_id):
         print("Sending motivational messages...")
         motivational_messages = [
-            "Your commitment to progress is inspiring, {name}. Keep engaging with Alex and moving forward.",
-            "The journey of a thousand miles begins with a single step, {name}. Keep stepping with Alex!",
-            "Success is the sum of small efforts repeated daily, {name}. Keep engaging with Alex and building your success.",
-            "Your determination fuels your journey, {name}. Keep returning to Alex and pursuing your goals.",
-            "Believe in yourself and your ability to create positive change, {name}. Keep engaging with Alex and making a difference.",
-            "Your consistent actions define your success, {name}. Keep engaging with Alex and shaping your destiny.",
-            "Every interaction with Alex is a step towards realizing your potential, {name}. Keep embracing the journey.",
-            "Your engagement with Alex today lays the foundation for your achievements tomorrow, {name}. Keep it up!",
-            "The secret to getting ahead is getting started, {name}. Keep taking action with Alex and reaching new heights.",
-            "Hi {name}, it's a new opportunity to engage with Alex and stay motivated.",
-            "Hey {name}, a little progress each day adds up to big results. Keep engaging with Alex!",
-            "Hello {name}, just a quick reminder that your journey to success starts with small steps. Keep going with Alex!",
-            "Your dedication to self-improvement is truly inspiring, {name}. Keep up the great work with Alex!",
-            "Your commitment to personal growth sets you on a path to greatness, {name}. Keep it up with Alex!",
-            "Remember that every moment you spend engaging with Alex brings you closer to your goals, {name}.",
-            "Your journey to success is a marathon, not a sprint, {name}. Keep engaging with Alex and progressing.",
-            "A small step forward is still progress, {name}. Keep coming back to Alex and making those steps count!",
-            "Every interaction with Alex contributes to your growth and success, {name}. Keep that momentum!",
-            "Your efforts today shape your future, {name}. Keep engaging with Alex and reaching for your dreams.",
-            "Consistency is key on the path to success, {name}. Keep returning to Alex and moving forward.",
-            "Your dedication to personal development is remarkable, {name}. Keep interacting with Alex and shining!",
-            "Your commitment to growth sets you apart, {name}. Keep coming back to Alex and making your mark.",
-            "It's never too late to start or continue your journey, {name}. Keep engaging with Alex and thriving!",
-            "Your progress matters, {name}. Keep returning to Alex and building the life you envision.",
-            "Your effort today brings you closer to the person you want to become, {name}. Keep it up!",
-            "Remember that every day is a new chance to make progress, {name}. Keep interacting with Alex and achieving more.",
-            "You're on the right track to success, {name}. Keep coming back to Alex and staying motivated!",
-            "Your journey may have ups and downs, but each step counts, {name}. Keep engaging with Alex and moving forward.",
-            "Your determination is commendable, {name}. Keep returning to Alex and writing your success story!",
-            "Your consistent efforts pave the way to your goals, {name}. Keep engaging with Alex and thriving.",
+            "Hello {name}, it's another day to contribute to a more sustainable future. Keep up the great work!",
+            "Your dedication to sustainability is inspiring, {name}. Keep making eco-friendly choices with Synthia!",
+            "Every small action counts, {name}. Your efforts are helping to create a greener planet with Synthia.",
+            "Your commitment to sustainability sets a positive example for others, {name}. Keep up the good work!",
+            "The Earth thanks you for your efforts, {name}. Continue making a positive impact with Synthia.",
+            "Your actions matter, {name}. Keep working towards a more sustainable world with Synthia's guidance.",
+            "The journey to a sustainable world starts with you, {name}. Keep making conscious choices with Synthia!",
+            "Your dedication to sustainability is a step towards a brighter future, {name}. Keep up the great work!",
+            "Sustainability is a path of progress, {name}. Keep moving forward with Synthia and making a difference.",
+            "Thank you for being an eco-warrior, {name}. Your actions are making a positive change with Synthia.",
+            "Every effort you make for sustainability is a step towards a better planet, {name}. Keep it up!",
+            "Your passion for sustainability shines through, {name}. Keep making the world a better place with Synthia.",
+            "By choosing sustainability, you're leaving a positive mark on the world, {name}. Keep up the good work!",
+            "Your dedication to a sustainable lifestyle is truly commendable, {name}. Keep it up with Synthia!",
+            "Sustainability is a journey, and you're on the right path, {name}. Keep making a difference with Synthia.",
         ]
         return random.choice(motivational_messages).format(name=self.user_details[chat_id]['name'])
 
@@ -163,9 +156,73 @@ class SustainabilityBot(Bot):
         except Exception as e:
             traceback.print_exc()  # Print the exception traceback
 
-    def stop(self):
-        self.stop_motivational_thread()
-        super().stop()  # Call the parent stop method to stop the bot's polling
+    # def stop(self):
+    #     self.stop_motivational_thread()
+    #     super().stop()  # Call the parent stop method to stop the bot's polling
+
+    def handle_voice_message(self, message):
+        try:
+            # Download and save the voice message
+            file_info = self.bot.get_file(message.voice.file_id)
+            downloaded_file = self.bot.download_file(file_info.file_path)
+
+            voice_path = "voice_message.ogg"
+            with open(voice_path, 'wb') as new_file:
+                new_file.write(downloaded_file)
+
+            # Convert OGG to WAV format
+            audio = AudioSegment.from_ogg(voice_path)
+            audio.export("voice_message.wav", format="wav")
+
+            # Recognize the speech
+            with sr.AudioFile("voice_message.wav") as source:
+                audio = self.recognizer.record(source)
+                command = self.recognizer.recognize_google(audio)
+
+            # Generate and send response
+            response = self.generate_response(command)
+            self.send_voice_response(message.chat.id, response)
+
+            os.remove(voice_path)  # Clean up the temporary voice file
+
+        except Exception as e:
+            error_message = f"Error: {str(e)}"
+            self.send_text(error_message, message.chat.id)
+
+    def recognize_speech(self, audio_path):
+        with sr.AudioFile(audio_path) as source:
+            audio = self.recognizer.record(source)
+            command = self.recognizer.recognize_google(audio)
+        return command
+
+    def generate_response(self, input_text):
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=f"You: {input_text}\nBot:",
+            max_tokens=50
+        ).choices[0].text.strip()
+        return response
+
+    def send_voice_response(self, chat_id, response):
+        tts = gTTS(response)
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_file:
+            tts.save(temp_file.name)
+
+        with open(temp_file.name, 'rb') as voice_file:
+            self.bot.send_voice(chat_id, voice_file)
+
+        os.remove(temp_file.name)
+
+    def handle_text_message(self, message):
+        try:
+            input_text = message.text
+
+            response = self.generate_response(input_text)
+            self.send_voice_response(message.chat.id, response)
+
+        except Exception as e:
+            error_message = f"Error: {str(e)}"
+            self.send_text(error_message, message.chat.id)
 
 
 if __name__ == "__main__":
@@ -173,8 +230,8 @@ if __name__ == "__main__":
         _token = telegram_token_file.read().strip()
 
     # Load the GPT token from the file
-    with open(".gptkey", "r") as gpt_token_file:
-        openai_key = gpt_token_file.read().strip()
+    with open(".gptKey2", "r") as gpt_token_file:
+        openai.api_key = gpt_token_file.read().strip()
     my_bot = SustainabilityBot(_token, openai.api_key)
 
     conn = sqlite3.connect('feedback.db')
@@ -258,7 +315,8 @@ if __name__ == "__main__":
             "/help - Discover the range of sustainability topics I can assist you with\n"
             "/search - Search for information on sustainable practices\n"
             "/motivation - Let me inspire you to embrace an eco-friendly lifestyle\n"
-            "/feedback - Share your thoughts and help improve Synthia"
+            "/feedback - Share your thoughts and help improve Synthia\n"
+            "/voice - Ask Questions through voice or text"
         )
         my_bot.send_text(help_text)
 
@@ -273,10 +331,15 @@ if __name__ == "__main__":
         my_bot.send_text_with_quote(response, message_id=message.message_id)
 
 
-    @my_bot.bot.message_handler(commands=["stop"])
-    def handle_stop(message):
-        my_bot.send_text("Stopping the bot...")
-        my_bot.stop()
+    @my_bot.bot.message_handler(content_types=['voice'])
+    def handle_voice(message):
+        my_bot.handle_voice_message(message)
+
+
+    # Register the text message handler
+    @my_bot.bot.message_handler(func=lambda message: True)
+    def handle_text(message):
+        my_bot.handle_text_message(message)
 
 
     my_bot.start()
