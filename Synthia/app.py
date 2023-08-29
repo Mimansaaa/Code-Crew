@@ -281,8 +281,8 @@ if __name__ == "__main__":
                 'name': None,
                 'state': 'waiting_for_name'
             }
-            my_bot.send_text("Hi! We'll keep motivating you to come and study with me.")
-            my_bot.send_text("So, what's your name?", chat_id)
+            my_bot.send_text("Hello there! Get ready to embark on a learning adventure with Synthia as your guide.")
+            my_bot.send_text("What's your name?", chat_id)
         else:
             my_bot.send_text("You're already registered for motivational messages!")
 
