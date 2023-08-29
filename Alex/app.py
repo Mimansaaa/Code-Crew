@@ -1,13 +1,17 @@
-import telebot
 import random
 import schedule
 import threading
 import time
 import sqlite3
-import openai
 from loguru import logger
 import traceback
-
+import telebot
+import speech_recognition as sr
+from pydub import AudioSegment
+import openai
+from gtts import gTTS
+import tempfile
+import os
 
 class Bot:
     def __init__(self, token):
@@ -21,7 +25,8 @@ class Bot:
         """Bot internal messages handler"""
         for message in messages:
             self.current_msg = message
-            self.handle_message(message)
+            if message.text:
+                self.handle_message(message)
 
     def start(self):
         logger.info(f"{self.__class__.__name__} is up and listening to new messages....")
@@ -48,6 +53,7 @@ class EducationalBot(Bot):
     def __init__(self, token, openai_key):
         super().__init__(token)
         self.openai_key = openai_key
+        self.recognizer = sr.Recognizer()  # Initialize the speech recognition object
 
     def search_gpt(self, query):
         completion = openai.ChatCompletion.create(
@@ -163,9 +169,73 @@ class EducationalBot(Bot):
         except Exception as e:
             traceback.print_exc()  # Print the exception traceback
 
-    def stop(self):
-        self.stop_motivational_thread()
-        super().stop()  # Call the parent stop method to stop the bot's polling
+    # def stop(self):
+    #     self.stop_motivational_thread()
+    #     super().stop()  # Call the parent stop method to stop the bot's polling
+
+    def handle_voice_message(self, message):
+        try:
+            # Download and save the voice message
+            file_info = self.bot.get_file(message.voice.file_id)
+            downloaded_file = self.bot.download_file(file_info.file_path)
+
+            voice_path = "voice_message.ogg"
+            with open(voice_path, 'wb') as new_file:
+                new_file.write(downloaded_file)
+
+            # Convert OGG to WAV format
+            audio = AudioSegment.from_ogg(voice_path)
+            audio.export("voice_message.wav", format="wav")
+
+            # Recognize the speech
+            with sr.AudioFile("voice_message.wav") as source:
+                audio = self.recognizer.record(source)
+                command = self.recognizer.recognize_google(audio)
+
+            # Generate and send response
+            response = self.generate_response(command)
+            self.send_voice_response(message.chat.id, response)
+
+            os.remove(voice_path)  # Clean up the temporary voice file
+
+        except Exception as e:
+            error_message = f"Error: {str(e)}"
+            self.send_text(error_message, message.chat.id)
+
+    def recognize_speech(self, audio_path):
+        with sr.AudioFile(audio_path) as source:
+            audio = self.recognizer.record(source)
+            command = self.recognizer.recognize_google(audio)
+        return command
+
+    def generate_response(self, input_text):
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=f"You: {input_text}\nBot:",
+            max_tokens=50
+        ).choices[0].text.strip()
+        return response
+
+    def send_voice_response(self, chat_id, response):
+        tts = gTTS(response)
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_file:
+            tts.save(temp_file.name)
+
+        with open(temp_file.name, 'rb') as voice_file:
+            self.bot.send_voice(chat_id, voice_file)
+
+        os.remove(temp_file.name)
+
+    def handle_text_message(self, message):
+        try:
+            input_text = message.text
+
+            response = self.generate_response(input_text)
+            self.send_voice_response(message.chat.id, response)
+
+        except Exception as e:
+            error_message = f"Error: {str(e)}"
+            self.send_text(error_message, message.chat.id)
 
 
 if __name__ == "__main__":
@@ -174,7 +244,8 @@ if __name__ == "__main__":
 
     # Load the GPT token from the file
     with open(".gptKey", "r") as gpt_token_file:
-        openai_key = gpt_token_file.read().strip()
+        openai.api_key = gpt_token_file.read().strip()
+
     my_bot = EducationalBot(_token, openai.api_key)
 
     conn = sqlite3.connect('feedback.db')
@@ -258,10 +329,10 @@ if __name__ == "__main__":
             "/help - See this list of functionalities and commands\n"
             "/search - Search for educational information\n"
             "/motivation - Let me motivate you to study and learn\n"
-            "/feedback - Provide feedback to help improve Alex"
+            "/feedback - Provide feedback to help improve Alex\n"
+            "/voice - Ask Questions through voice or text"
         )
         my_bot.send_text(help_text)
-
 
     @my_bot.bot.message_handler(commands=["search"])
     def handle_chatgpt(message):
@@ -272,11 +343,14 @@ if __name__ == "__main__":
 
         my_bot.send_text_with_quote(response, message_id=message.message_id)
 
+    @my_bot.bot.message_handler(content_types=['voice'])
+    def handle_voice(message):
+        my_bot.handle_voice_message(message)
 
-    @my_bot.bot.message_handler(commands=["stop"])
-    def handle_stop(message):
-        my_bot.send_text("Stopping the bot...")
-        my_bot.stop()
+    # Register the text message handler
+    @my_bot.bot.message_handler(func=lambda message: True)
+    def handle_text(message):
+        my_bot.handle_text_message(message)
 
 
     my_bot.start()
