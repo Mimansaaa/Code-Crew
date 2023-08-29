@@ -43,12 +43,6 @@ class Bot:
         logger.info(f"Incoming message: {message}")
         self.send_text(f"Your original message: {message.text}")
 
-
-class QuoteBot(Bot):
-    def handle_message(self, message):
-        logger.info(f"Incoming message: {message}")
-
-
 class EducationalBot(Bot):
     def __init__(self, token, openai_key):
         super().__init__(token)
@@ -340,8 +334,6 @@ if __name__ == "__main__":
         query = message.text.replace("/search", "").strip()
         # Call the gpt() function with the extracted query
         response = my_bot.search_gpt(query)
-
-        my_bot.send_text_with_quote(response, message_id=message.message_id)
 
     @my_bot.bot.message_handler(content_types=['voice'])
     def handle_voice(message):
