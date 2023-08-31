@@ -1,11 +1,10 @@
-pipeline {
-    agent any
-
-    stages {
-        stage('Build') {
-            steps {
-                sh 'echo building...'
-            }
-        }
-    }
+stage('Build Alex Bot') {
+   steps {
+       sh '''
+            aws ecr get-login-pass..... | docker login --username AWS ....
+            docker build ...
+            docker tag ...
+            docker push ...
+       '''
+   }
 }
