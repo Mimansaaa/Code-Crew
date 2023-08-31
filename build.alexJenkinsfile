@@ -1,10 +1,23 @@
-stage('Build Alex Bot') {
-   steps {
-       sh '''
-            aws ecr get-login-pass..... | docker login --username AWS ....
-            docker build ...
-            docker tag ...
-            docker push ...
-       '''
-   }
+pipeline {
+    agent any
+    stages {
+        stage('Build Alex Bot') {
+            steps {
+                script {
+                    sh """
+                        aws ecr get-login-pass..... | docker login --username AWS ....
+                        docker build ...
+                        docker tag ...
+                        docker push ...
+                    """
+                }
+            }
+        }
+        // Add more stages as needed
+    }
+    post {
+        always {
+            // Cleanup or notifications
+        }
+    }
 }
