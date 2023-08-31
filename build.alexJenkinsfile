@@ -1,23 +1,28 @@
 pipeline {
     agent any
+    
     stages {
-        stage('Build Alex Bot') {
+        stage('Checkout') {
             steps {
-                script {
-                    sh """
-                        aws ecr get-login-pass..... | docker login --username AWS ....
-                        docker build ...
-                        docker tag ...
-                        docker push ...
-                    """
-                }
+                checkout scm
             }
         }
-        // Add more stages as needed
+        
+        stage('Build') {
+            steps {
+                sh 'pip install -r requirements.txt' // Install required dependencies
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                sh 'python your_bot_script.py' // Replace with the actual filename of your Python script
+            }
+        }
     }
+    
     post {
         always {
-            // Cleanup or notifications
             echo 'Pipeline completed.'
         }
     }
