@@ -18,6 +18,7 @@ pipeline {
     post {
         always {
             // Cleanup or notifications
+            echo 'Pipeline completed.'
         }
     }
 }
