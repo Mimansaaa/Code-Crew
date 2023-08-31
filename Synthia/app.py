@@ -26,8 +26,7 @@ class Bot:
         """Bot internal messages handler"""
         for message in messages:
             self.current_msg = message
-            if message.text:
-                self.handle_message(message)
+            self.handle_message(message)
 
     def start(self):
         logger.info(f"{self.__class__.__name__} is up and listening to new messages....")
@@ -42,7 +41,11 @@ class Bot:
 
     def handle_message(self, message):
         logger.info(f"Incoming message: {message}")
-        self.send_text(f"Your original message: {message.text}")
+        #self.send_text(f"Your original message: {message.text}")
+
+class QuoteBot(Bot):
+    def handle_message(self, message):
+        logger.info(f"Incoming message: {message}")
 
 class SustainabilityBot(Bot):
     def __init__(self, token, openai_key):
@@ -51,9 +54,11 @@ class SustainabilityBot(Bot):
         self.recognizer = sr.Recognizer()  # Initialize the speech recognition object
 
     def search_gpt(self, query):
+        sustainability_prompt = "You are a chatbot specialized in discussing sustainability topics. Please provide information about environmental conservation, renewable energy, sustainable practices, or any other sustainability-related subject for this query:"
+        sustainability_prompt = sustainability_prompt+query
         completion = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": query}],
+            messages=[{"role": "user", "content": sustainability_prompt}],
             max_tokens=1024,
             n=1,
             stop=None,
@@ -64,11 +69,6 @@ class SustainabilityBot(Bot):
 
         return response
 
-    def handle_message(self, message):
-        logger.info(f"Incoming message: {message}")
-
-        if message.text.startswith('/feedback'):
-            self.send_feedback_button(message)
 
     def send_feedback_button(self, message):
         markup = telebot.types.InlineKeyboardMarkup()
@@ -81,7 +81,8 @@ class SustainabilityBot(Bot):
             "Thank you for using the bot! Please provide your feedback:",
             reply_markup=markup,
         )
-
+    def send_text_with_quote(self, text, message_id=None):
+        self.send_text(text)
     def start_motivational_thread(self):
         self.motivational_thread = threading.Thread(target=self.send_motivational_message)
         self.motivational_thread.daemon = True  # Thread will exit when the main program exits
@@ -137,7 +138,7 @@ class SustainabilityBot(Bot):
         super().start()
         self.start_motivational_thread()
 
-        self.schedule = schedule.Scheduler()  # Create the schedule instance
+        self.schedule = schedule.Scheduler()             # Create the schedule instance
         # Schedule the motivational message task
         self.schedule.every(4).seconds.do(self.send_motivational_message)
 
@@ -154,9 +155,10 @@ class SustainabilityBot(Bot):
         try:
             while True:
                 self.schedule.run_pending()
-                time.sleep(5)  # Sleep for 2 seconds to prevent high CPU usage
+                time.sleep(5)                   # Sleep for 2 seconds to prevent high CPU usage
         except Exception as e:
-            traceback.print_exc()  # Print the exception traceback
+            traceback.print_exc()            # Print the exception traceback
+
 
     def handle_voice_message(self, message):
         try:
@@ -236,7 +238,15 @@ if __name__ == "__main__":
     cursor = conn.cursor()
 
 
-    @my_bot.bot.callback_query_handler(func=lambda call: call.data == 'feedback')
+    @my_bot.bot.message_handler(commands=["feedback"])
+    def handle_feedback(message):
+        logger.info(f"Incoming message: {message}")
+
+        if (message.text).startswith('/feedback'):
+            my_bot.send_feedback_button(message)
+
+
+    @my_bot.bot.callback_query_handler(func=lambda call: call.data == "feedback")
     def ask_for_feedback(call):
         my_bot.bot.send_message(call.message.chat.id, "Please share your thoughts:")
         my_bot.bot.register_next_step_handler_by_chat_id(call.message.chat.id, save_feedback)
@@ -253,12 +263,12 @@ if __name__ == "__main__":
 
             # Create the 'feedback' table if it doesn't exist
             cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS feedback (
-                        user_id INTEGER,
-                        feedback_text TEXT,
-                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-                    )
-                ''')
+                        CREATE TABLE IF NOT EXISTS feedback (
+                            user_id INTEGER,
+                            feedback_text TEXT,
+                            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                        )
+                    ''')
 
             cursor.execute("INSERT INTO feedback (user_id, feedback_text) VALUES (?, ?)", (user_id, feedback_text))
             conn.commit()
@@ -281,8 +291,8 @@ if __name__ == "__main__":
                 'name': None,
                 'state': 'waiting_for_name'
             }
-            my_bot.send_text("Hello there! Get ready to embark on a learning adventure with Synthia as your guide.")
-            my_bot.send_text("What's your name?", chat_id)
+            my_bot.send_text("Hi! We'll keep motivating you to come and study with me.")
+            my_bot.send_text("So, what's your name?", chat_id)
         else:
             my_bot.send_text("You're already registered for motivational messages!")
 
@@ -314,9 +324,30 @@ if __name__ == "__main__":
             "/search - Search for information on sustainable practices\n"
             "/motivation - Let me inspire you to embrace an eco-friendly lifestyle\n"
             "/feedback - Share your thoughts and help improve Synthia\n"
-            "/voice - Ask Questions through voice or text"
+            "/voice - Ask Questions through voice or text\n"
+            "/sciencegame - Let's play science Quiz\n"
+            "/mathsgame - Let's play Maths Quiz\n"
+            "/englishgame - Let's play English Quiz\n"
         )
         my_bot.send_text(help_text)
+
+
+    @my_bot.bot.message_handler(commands=["sciencegame"])
+    def handle_help(message):
+        text = "Go to this link to play the game: "
+        my_bot.send_text(text)
+
+
+    @my_bot.bot.message_handler(commands=["mathsgame"])
+    def handle_help(message):
+        text = "Go to this link to play the game: "
+        my_bot.send_text(text)
+
+
+    @my_bot.bot.message_handler(commands=["englishgame"])
+    def handle_help(message):
+        text = "Go to this link to play the game: "
+        my_bot.send_text(text)
 
 
     @my_bot.bot.message_handler(commands=["search"])
@@ -326,9 +357,13 @@ if __name__ == "__main__":
         # Call the gpt() function with the extracted query
         response = my_bot.search_gpt(query)
 
+        my_bot.send_text_with_quote(response, message_id=message.message_id)
+
+
     @my_bot.bot.message_handler(content_types=['voice'])
     def handle_voice(message):
         my_bot.handle_voice_message(message)
+
 
     # Register the text message handler
     @my_bot.bot.message_handler(func=lambda message: True)
@@ -338,6 +373,3 @@ if __name__ == "__main__":
 
     my_bot.start()
 
-    # Close the SQLite connection when the bot stops polling
-    cursor.close()
-    conn.close()
