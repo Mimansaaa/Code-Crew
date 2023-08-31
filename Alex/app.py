@@ -336,13 +336,13 @@ if __name__ == "__main__":
 
     @my_bot.bot.message_handler(commands=["sciencegame"])
     def handle_help(message):
-        text = "Go to this link to play the game: "
+        text = "Go to this link to play the game: https://take.quiz-maker.com/Q5QD0XK6M"
         my_bot.send_text(text)
 
 
     @my_bot.bot.message_handler(commands=["mathsgame"])
     def handle_help(message):
-        text = "Go to this link to play the game: "
+        text = "Go to this link to play the game: https://take.quiz-maker.com/Q5QD0XKCM"
         my_bot.send_text(text)
 
 
