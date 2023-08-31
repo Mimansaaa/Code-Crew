@@ -325,30 +325,23 @@ if __name__ == "__main__":
             "/motivation - Let me inspire you to embrace an eco-friendly lifestyle\n"
             "/feedback - Share your thoughts and help improve Synthia\n"
             "/voice - Ask Questions through voice or text\n"
-            "/sciencegame - Let's play science Quiz\n"
-            "/mathsgame - Let's play Maths Quiz\n"
-            "/englishgame - Let's play English Quiz\n"
+            "/susquiz - Let's play science Quiz\n"
+            "/huntgame - Let's play Maths Quiz"
+
         )
         my_bot.send_text(help_text)
 
 
-    @my_bot.bot.message_handler(commands=["sciencegame"])
+    @my_bot.bot.message_handler(commands=["susquiz"])
     def handle_help(message):
-        text = "Go to this link to play the game: "
+        text = "Go to this link to play the game: https://take.quiz-maker.com/QTS959NRT"
         my_bot.send_text(text)
 
 
-    @my_bot.bot.message_handler(commands=["mathsgame"])
+    @my_bot.bot.message_handler(commands=["huntgame"])
     def handle_help(message):
-        text = "Go to this link to play the game: "
+        text = "Go to this link to play the game: https://take.quiz-maker.com/Q0DYL6NTR"
         my_bot.send_text(text)
-
-
-    @my_bot.bot.message_handler(commands=["englishgame"])
-    def handle_help(message):
-        text = "Go to this link to play the game: "
-        my_bot.send_text(text)
-
 
     @my_bot.bot.message_handler(commands=["search"])
     def handle_chatgpt(message):
