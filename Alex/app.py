@@ -329,7 +329,7 @@ if __name__ == "__main__":
             "/voice - Ask Questions through voice or text\n"
             "/sciencegame - Let's play science Quiz\n"
             "/mathsgame - Let's play Maths Quiz\n"
-            "/englishgame - Let's play English Quiz\n"
+            "/englishgame - Let's play English Quiz"
 
         )
         my_bot.send_text(help_text)
@@ -348,7 +348,7 @@ if __name__ == "__main__":
 
     @my_bot.bot.message_handler(commands=["englishgame"])
     def handle_help(message):
-        text = "Go to this link to play the game: "
+        text = "Go to this link to play the game: https://take.quiz-maker.com/QCVFKZ4H0"
         my_bot.send_text(text)
 
     @my_bot.bot.message_handler(commands=["search"])
