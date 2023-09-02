@@ -39,7 +39,8 @@ Thank you for using our AI Bot with Voice Assistant. We hope you find it informa
 
 ## Meet the Team
 - aanchaltailwal (https://github.com/aanchaltailwal)
-- [Your Name 2](GitHub Profile Link)
+- nushk28
+(https://github.com/nushk28)
 - [Your Name 3](GitHub Profile Link)
 - [Your Name 4](GitHub Profile Link)
 
