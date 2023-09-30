@@ -41,7 +41,7 @@ Thank you for using our AI Bot with Voice Assistant. We hope you find it informa
 - aanchaltailwal (https://github.com/aanchaltailwal)
 - nushk28
 (https://github.com/nushk28)
-- Khushi-Allawadai
+- Khushi-Allawadi
 (https://github.com/Khushi-Allawadi)
 - Mimansaaa
 (https://github.com/Mimansaaa)
