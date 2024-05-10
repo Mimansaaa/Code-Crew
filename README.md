@@ -39,7 +39,7 @@ Thank you for using our AI Bot with Voice Assistant. We hope you find it informa
 
 ## Meet the Team
 - aanchaltailwal (https://github.com/aanchaltailwal)
-- nushk28
+- Anushka Srivastava
 (https://github.com/nushk28)
 - Khushi-Allawadai
 (https://github.com/Khushi-Allawadi)
